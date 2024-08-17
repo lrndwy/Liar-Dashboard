@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-(8@=n9a2^)vf#k-*e!0$t!-et1orll%3)q%cash8xb9@hu-5c2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['liardb.endofbeginning.online','localhost','127.0.0.1']
 
 
 # Application definition
