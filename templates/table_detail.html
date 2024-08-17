@@ -213,7 +213,7 @@
                             <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 dark:text-gray-500 dark:ring-gray-600 dark:hover:bg-gray-700">
                                 <span class="sr-only">Berikutnya</span>
                                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
                                 </svg>
                             </a>
                         {% endif %}
@@ -453,11 +453,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 'POST',
                 formData,
                 function(data) {
-                    alert(data.message);
+                    showAlert(data.message, 'success');
                     location.reload();
                 },
                 function(data) {
-                    alert(data.message || 'Terjadi kesalahan saat mengedit data.');
+                    showAlert(data.message || 'Terjadi kesalahan saat mengedit data.', 'error');
                 }
             );
         });
@@ -475,11 +475,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 'POST',
                 formData,
                 function(data) {
-                    alert(data.message);
+                    showAlert(data.message, 'success');
                     location.reload();
                 },
                 function(data) {
-                    alert(data.message || 'Terjadi kesalahan saat menghapus data.');
+                    showAlert(data.message || 'Terjadi kesalahan saat menghapus data.', 'error');
                 }
             );
         });
@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const rowIds = Array.from(checkedBoxes).map(checkbox => checkbox.id.split('-')[1]);
         
         if (rowIds.length === 0) {
-            alert('Pilih setidaknya satu data untuk dihapus.');
+            showAlert('Pilih setidaknya satu data untuk dihapus.', 'warning');
             return;
         }
 
@@ -545,11 +545,11 @@ document.addEventListener('DOMContentLoaded', function() {
             'POST',
             formData,
             function(data) {
-                alert(data.message);
+                showAlert(data.message, 'success');
                 location.reload();
             },
             function(data) {
-                alert(data.message || 'Terjadi kesalahan saat menghapus data.');
+                showAlert(data.message || 'Terjadi kesalahan saat menghapus data.', 'error');
             }
         );
     });

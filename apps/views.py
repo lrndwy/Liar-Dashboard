@@ -29,10 +29,10 @@ def register_view(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
+            messages.success(request, 'Akun berhasil dibuat. Selamat datang!')
             return redirect('dashboard')
         else:
-            # Tambahkan pesan kesalahan ke dalam konteks
-            return render(request, 'register.html', {'form': form, 'errors': form.errors, 'success': 'Akun berhasil dibuat. Silakan masuk.'})
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = CustomUserCreationForm()
     return render(request, 'register.html', {'form': form})
@@ -45,13 +45,17 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+            messages.success(request, 'Anda berhasil masuk.')
             return redirect('dashboard')
+        else:
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = CustomAuthenticationForm()
     return render(request, 'login.html', {'form': form})
 
 def logout_view(request):
     logout(request)
+    messages.info(request, 'Anda telah keluar dari sistem.')
     return redirect('login')
 
 @login_required
@@ -67,7 +71,10 @@ def create_table_view(request):
             table = form.save(commit=False)
             table.user = request.user
             table.save()
+            messages.success(request, 'Tabel berhasil dibuat.')
             return redirect('table_detail', table_id=table.id)
+        else:
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = TableForm()
     return render(request, 'dashboard.html', {'form': form})
@@ -143,18 +150,22 @@ def table_detail_view(request, table_id):
                             data_json[column_id] = value
                 row.data_json = data_json
                 row.save()
+                messages.success(request, 'Data berhasil diubah.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil diubah'})
             elif action == 'delete':
                 row = get_object_or_404(Row, id=row_id, table__user=request.user)
                 row.delete()
+                messages.success(request, 'Data berhasil dihapus.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil dihapus'})
             elif action == 'bulk_delete':
                 row_ids = json.loads(request.POST.get('row_ids', '[]'))
                 try:
                     # Lakukan penghapusan data berdasarkan row_ids
                     Row.objects.filter(id__in=row_ids).delete()
+                    messages.success(request, 'Data berhasil dihapus.')
                     return JsonResponse({'success': True, 'message': 'Data berhasil dihapus.'})
                 except Exception as e:
+                    messages.error(request, f'Terjadi kesalahan: {str(e)}')
                     return JsonResponse({'success': False, 'message': str(e)})
         return JsonResponse({'success': False, 'message': 'Permintaan tidak valid'})
 
@@ -176,17 +187,19 @@ def add_column_view(request, table_id):
             column = form.save(commit=False)
             column.table = table
             column.save()
+            messages.success(request, 'Kolom berhasil ditambahkan.')
             return redirect('table_detail', table_id=table.id)
+        else:
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = ColumnForm(user=request.user, current_table=table)
     
-    # Tambahkan ini untuk menyertakan daftar tabel pengguna
     user_tables = Table.objects.filter(user=request.user).exclude(id=table_id)
     
     return render(request, 'table_detail.html', {
         'form': form, 
         'table': table,
-        'user_tables': user_tables  # Tambahkan ini ke konteks
+        'user_tables': user_tables
     })
 
 @login_required
@@ -207,7 +220,10 @@ def add_data_view(request, table_id):
                         data_json[column_id] = str(value) if value is not None else ''
             row.data_json = data_json
             row.save()
+            messages.success(request, 'Data berhasil ditambahkan.')
             return redirect('table_detail', table_id=table.id)
+        else:
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = DataForm(table=table)
     return render(request, 'table_detail.html', {'form': form, 'table': table})
@@ -228,6 +244,7 @@ def edit_data_view(request, row_id):
                 data_json[column.name] = value
         row.data_json = data_json
         row.save()
+        messages.success(request, 'Data berhasil diubah.')
         return redirect('table_detail', table_id=table.id)
 
     return render(request, 'table_detail.html', {'row': row, 'columns': columns})
@@ -237,6 +254,7 @@ def delete_data_view(request, row_id):
     row = get_object_or_404(Row, id=row_id, table__user=request.user)
     table_id = row.table.id
     row.delete()
+    messages.success(request, 'Data berhasil dihapus.')
     return redirect('table_detail', table_id=table_id)
 
 @login_required
@@ -246,15 +264,17 @@ def edit_table_view(request, table_id):
         form = TableForm(request.POST, instance=table)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Tabel berhasil diubah.')
             return redirect('table_detail', table_id=table.id)
         else:
-            return render(request, 'table_detail.html', {'form': form, 'table': table})
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     return render(request, 'table_detail.html', {'form': form, 'table': table})
 
 @login_required
 def delete_table_view(request, table_id):
     table = get_object_or_404(Table, id=table_id, user=request.user)
     table.delete()
+    messages.success(request, 'Tabel berhasil dihapus.')
     return redirect('dashboard')
 
 @login_required
@@ -306,6 +326,7 @@ def export_table_data(request, table_id, format):
                 row_data.append(value)
             writer.writerow(row_data)
 
+        messages.success(request, 'Data berhasil diekspor ke CSV.')
         return response
 
     elif format == 'excel':
@@ -345,8 +366,10 @@ def export_table_data(request, table_id, format):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename="{table.name}.xlsx"'
         workbook.save(response)
+        messages.success(request, 'Data berhasil diekspor ke Excel.')
         return response
 
+    messages.error(request, "Format tidak didukung")
     return HttpResponse("Format tidak didukung", status=400)
 
 @login_required
@@ -450,6 +473,8 @@ def edit_column_view(request, table_id, column_id):
             form.save()
             messages.success(request, 'Kolom berhasil diubah.')
             return redirect('table_detail', table_id=table.id)
+        else:
+            messages.error(request, 'Terjadi kesalahan saat mengubah kolom. Silakan coba lagi.')
     else:
         form = ColumnForm(instance=column, user=request.user, current_table=table)
     
@@ -465,4 +490,5 @@ def delete_column_view(request, table_id, column_id):
         messages.success(request, 'Kolom berhasil dihapus.')
         return redirect('table_detail', table_id=table.id)
     
+    messages.warning(request, 'Konfirmasi penghapusan kolom.')
     return render(request, 'table_detail.html', {'table': table, 'column': column})
