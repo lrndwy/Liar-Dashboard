@@ -1,0 +1,92 @@
+{% load static %}
+{% load compress %}
+
+<!DOCTYPE html>
+<html lang="id" class="overflow-y-scroll scrollbar-hide">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pengolahan Data{% endblock %}</title>
+    
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'src/output.css' %}">
+    {% endcompress %}
+    {% include "includes/head.html" %}
+    {% block extrastyle %}{% endblock extrastyle %}
+    <style>
+        /* Sembunyikan scrollbar untuk Chrome, Safari dan Opera */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Sembunyikan scrollbar untuk IE, Edge dan Firefox */
+        .scrollbar-hide {
+            -ms-overflow-style: none;  /* IE dan Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        
+        #main-content {
+            margin-top: 0; /* Hapus margin atas karena kita sudah menggunakan pt-16 */
+            margin-left: 16rem; /* Sesuaikan dengan lebar sidebar */
+        }
+        
+        @media (max-width: 1024px) {
+            #main-content {
+                margin-left: 0;
+            }
+        }
+
+        .dark {
+            color-scheme: dark;
+        }
+
+        .dark body {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+
+        .dark .text-gray-900 {
+            color: #f7fafc;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-800">
+    {% block navigation %}
+        {% include "includes/navigation.html" %}
+    {% endblock navigation %}
+
+    <div class="flex pt-16 bg-gray-50 dark:bg-gray-900">
+        {% block sidebar %}
+            {% include "includes/sidebar.html" %}
+        {% endblock sidebar %}
+
+        <div class="fixed inset-0 z-10 hidden bg-gray-900/50 dark:bg-gray-900/90" id="sidebarBackdrop"></div>
+
+        <div id="main-content" class="relative w-full h-full overflow-y-auto bg-gray-50 lg:ml-64 dark:bg-gray-800 scrollbar-hide">
+            {% block content %}{% endblock content %}
+            {% block footer %}
+                {% include "includes/footer.html" %}
+            {% endblock footer %}
+        </div>
+    </div>
+
+
+    {% block extra_js %}
+    <script src="https://buttons.github.io/buttons.js"></script>
+    <script src="{% static 'dist/main.bundle.js' %}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.2/datepicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="{% static 'assets/sidebar.js' %}"></script>
+    <script src="{% static 'assets/dark-mode.js' %}"></script>
+    {% endblock extra_js %}
+
+</body>
+
+</html>

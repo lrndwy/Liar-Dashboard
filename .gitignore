@@ -1,0 +1,6 @@
+.dist
+db.sqlite3
+/media/
+*.pyc
+*.DS_Store
+/node_modules/
