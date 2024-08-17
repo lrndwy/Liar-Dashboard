@@ -97,18 +97,18 @@
             </div>
             <!-- Modal body -->
             <div class="p-4 md:p-5 space-y-4">
-                <p class="text-gray-500 dark:text-gray-400">Untuk melihat dan mencoba API secara interaktif, silakan kunjungi:</p>
-                <ul class="space-y-2 text-gray-500 list-disc list-inside dark:text-gray-400">
+                <p class="text-sm md:text-base text-gray-500 dark:text-gray-400">Untuk melihat dan mencoba API secara interaktif, silakan kunjungi:</p>
+                <ul class="space-y-2 text-sm md:text-base text-gray-500 list-disc list-inside dark:text-gray-400">
                     <li><a href="{% url 'schema-swagger-ui' %}" target="_blank" class="text-blue-600 dark:text-blue-500 hover:underline">Swagger UI</a></li>
                     <li><a href="{% url 'schema-redoc' %}" target="_blank" class="text-blue-600 dark:text-blue-500 hover:underline">ReDoc</a></li>
                 </ul>
-                <p class="text-gray-500 dark:text-gray-400">Anda dapat mengakses API dengan Auth Token dan Tabel ID untuk Tabel <strong>{{ table.name }}</strong> adalah <strong>{{ table.id }}</strong></p>
+                <p class="text-sm md:text-base text-gray-500 dark:text-gray-400">Anda dapat mengakses API dengan Auth Token dan Tabel ID untuk Tabel <strong>{{ table.name }}</strong> adalah <strong>{{ table.id }}</strong></p>
 
                 <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Endpoint API:</h2>
-                <pre class="mb-4 p-4 bg-gray-100 rounded-lg dark:bg-gray-700"><code class="text-sm text-gray-900 dark:text-gray-400">{{ api_url }}</code></pre>
+                <pre class="mb-4 p-2 md:p-4 bg-gray-100 rounded-lg dark:bg-gray-700 overflow-x-auto"><code class="text-xs md:text-sm text-gray-900 dark:text-gray-400">{{ api_url }}</code></pre>
 
                 <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Contoh Penggunaan API:</h2>
-                <pre class="mb-4 p-4 bg-gray-100 rounded-lg dark:bg-gray-700"><code class="text-sm text-gray-900 dark:text-gray-400">curl -X 'POST' \
+                <pre class="mb-4 p-2 md:p-4 bg-gray-100 rounded-lg dark:bg-gray-700 overflow-x-auto"><code class="text-xs md:text-sm text-gray-900 dark:text-gray-400">curl -X 'POST' \
   'http://127.0.0.1:8000/api-token-auth/' \
   -H 'accept: application/json' \
   -d '{
