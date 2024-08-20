@@ -1,4 +1,5 @@
 {% extends 'layouts/base.html' %}
+{% load static %}
 
 {% block title %}Daftar Proyek{% endblock %}
 
@@ -47,7 +48,7 @@
         <div class="flex items-center mb-3">
             <div class="flex -space-x-2 mr-2">
                 {% for shared_user in project.shared_users.all|slice:":3" %}
-                    <img class="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800" src="{{ shared_user.avatar.url|default:'/static/images/default-avatar.png' }}" alt="{{ shared_user.username }}" onerror="this.src='/static/images/default-avatar.png'">
+                    <img class="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800" src="{% if shared_user.avatar %}{{ shared_user.avatar.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}" alt="{{ shared_user.username }}">
                 {% endfor %}
                 {% if project.shared_users.count > 3 %}
                     <span class="flex items-center justify-center w-6 h-6 text-xs font-medium text-white bg-gray-400 rounded-full">+{{ project.shared_users.count|add:"-3" }}</span>
