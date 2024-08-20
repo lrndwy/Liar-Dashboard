@@ -6,17 +6,24 @@ from .serializers import TableSerializer
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from django.db.models import Q
 
 class TableViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = TableSerializer
 
     def get_queryset(self):
-        return Table.objects.filter(user=self.request.user)
+        user = self.request.user
+        return Table.objects.filter(
+            Q(project__user=user) |
+            Q(project__shared_users=user)
+        ).distinct()
 
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
+            if not (instance.project.user == request.user or request.user in instance.project.shared_users.all()):
+                return Response({"error": "Anda tidak memiliki izin untuk mengakses tabel ini."}, status=status.HTTP_403_FORBIDDEN)
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         except Exception as e:

@@ -243,12 +243,25 @@ function loadSharedUsers(projectId) {
 }
 
 function searchUsers(query) {
-    if (query.length >= 2) {
+    if (query.length >= 1) {
         fetch(`/api/search-users/?q=${encodeURIComponent(query)}`)
             .then(response => response.json())
             .then(data => {
                 const resultsDiv = document.getElementById('userSearchResults');
                 resultsDiv.innerHTML = '';
+                
+                // Urutkan hasil berdasarkan kesesuaian
+                data.sort((a, b) => {
+                    const aIndex = a.username.toLowerCase().indexOf(query.toLowerCase());
+                    const bIndex = b.username.toLowerCase().indexOf(query.toLowerCase());
+                    if (aIndex === bIndex) {
+                        return a.username.localeCompare(b.username);
+                    }
+                    if (aIndex === -1) return 1;
+                    if (bIndex === -1) return -1;
+                    return aIndex - bIndex;
+                });
+
                 data.forEach(user => {
                     const userDiv = document.createElement('div');
                     userDiv.className = 'flex items-center p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg';

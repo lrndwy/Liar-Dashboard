@@ -635,8 +635,16 @@ def search_users(request):
     term = request.GET.get('term', '')
     users = CustomUser.objects.filter(
         Q(username__icontains=term) | Q(email__icontains=term)
-    ).exclude(id=request.user.id).exclude(is_superuser=True)[:5]  # Batasi hasil pencarian dan kecualikan superuser
-    data = [{'id': user.id, 'username': user.username, 'avatar': user.avatar.url if user.avatar else None} for user in users]
+    ).exclude(id=request.user.id).exclude(is_superuser=True)[:10]  # Batasi hasil pencarian dan kecualikan superuser
+    data = [
+        {
+            'id': user.id,
+            'username': user.username,
+            'avatar': user.avatar.url if user.avatar else None,
+            'match_index': user.username.lower().index(term.lower()) if term.lower() in user.username.lower() else float('inf')
+        } 
+        for user in users
+    ]
     return Response(data)
 
 @api_view(['GET'])

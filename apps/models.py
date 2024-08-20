@@ -47,8 +47,10 @@ class Project(models.Model):
 class Table(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tables', blank=True, null=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='tables')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tables')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return self.name
