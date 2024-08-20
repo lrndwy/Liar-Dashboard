@@ -1,0 +1,413 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}{{ project.name }} - Detail Proyek{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="w-full p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                <h5 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ project.name }}</h5>
+                
+
+            <div class="flex flex-wrap gap-2">
+                {% if project.user == request.user %}
+                    <!-- Tombol Edit Proyek -->
+                    <button data-modal-target="editProjectModal" data-modal-toggle="editProjectModal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
+                        Edit Proyek
+                    </button>
+
+                    <!-- Tombol Tambah Tabel -->
+                    <button data-modal-target="createTableModal" data-modal-toggle="createTableModal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
+                        Tambah Tabel
+                    </button>
+
+                    <!-- Tombol Impor Tabel -->
+                    <button data-modal-target="importTableModal" data-modal-toggle="importTableModal" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-blue-500 dark:focus:text-white">
+                        Impor Tabel
+                    </button>
+
+                    <!-- Tombol Hapus Proyek -->
+                    <button data-modal-target="deleteProjectModal" data-modal-toggle="deleteProjectModal" class="block text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800" type="button">
+                        Hapus Proyek
+                    </button>
+                {% elif request.user in project.shared_users.all %}
+                    <!-- Tombol Edit Proyek -->
+                    <button data-modal-target="editProjectModal" data-modal-toggle="editProjectModal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
+                        Edit Proyek
+                    </button>
+
+                    <!-- Tombol Tambah Tabel -->
+                    <button data-modal-target="createTableModal" data-modal-toggle="createTableModal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
+                        Tambah Tabel
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        <p class="font-normal text-gray-700 dark:text-gray-400">{{ project.description }}</p>
+    </div>
+</div>
+<div class="flex flex-wrap gap-4 px-4">
+    {% for table in tables %}
+    <div class="w-full max-w-md p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ table.name }}</h5>
+        <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">{{ table.description }}</p>
+        <div class="flex items-center mb-3">
+            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">Jumlah Data: {{ table.rows.count }}</span>
+        </div>
+        <a href="{% url 'table_detail' table.id %}" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+            Lihat Detail
+            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+    </div>
+    {% empty %}
+    <div class="w-full text-center">
+        <p class="text-gray-500 dark:text-gray-400">Belum ada tabel dalam proyek ini.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Buat Tabel Baru -->
+<div id="createTableModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Buat Tabel Baru
+                </h3>
+                <button type="button" class="end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="createTableModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 md:p-5">
+                <form action="{% url 'create_table' project.id %}" method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Tabel</label>
+                        <input type="text" name="name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="description" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Deskripsi Tabel</label>
+                        <textarea name="description" id="description" rows="4" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"></textarea>
+                    </div>
+                    <button type="submit" class="w-full text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">Buat Tabel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Impor Tabel -->
+<div id="importTableModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Impor Tabel
+                </h3>
+                <button type="button" class="end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="importTableModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 md:p-5">
+                <form action="{% url 'import_table_to_project' project.id %}" method="post" enctype="multipart/form-data" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label for="table_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Tabel:</label>
+                        <input type="text" name="table_name" id="table_name" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="file" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Pilih file CSV atau Excel:</label>
+                        <input type="file" name="file" id="file" accept=".csv,.xlsx,.xls" required class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="w-full text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">Impor Tabel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Hapus Proyek -->
+<div id="deleteProjectModal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex items-center justify-center">
+    <div class="relative p-4 w-full max-w-md">
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Konfirmasi Hapus Proyek
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="deleteProjectModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <div class="p-4 md:p-5 text-center">
+                <p class="mb-4 text-gray-500 dark:text-gray-300">Apakah Anda yakin ingin menghapus proyek ini? Tindakan ini tidak dapat dibatalkan.</p>
+                <form action="{% url 'delete_project' project.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">
+                        Ya, saya yakin
+                    </button>
+                    <button data-modal-hide="deleteProjectModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Tidak, batal</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Proyek -->
+<div id="editProjectModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Edit Proyek
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="editProjectModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <form id="editProjectForm" action="{% url 'edit_project' project.id %}" method="post" class="p-4 md:p-5">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="edit_project_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Proyek</label>
+                    <input type="text" name="name" id="edit_project_name" value="{{ project.name }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit_project_description" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Deskripsi Proyek</label>
+                    <textarea name="description" id="edit_project_description" rows="4" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">{{ project.description }}</textarea>
+                </div>
+                <button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Fungsi untuk menampilkan modal
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        }
+    }
+
+    // Fungsi untuk menyembunyikan modal
+    function hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
+    // Fungsi untuk mengirim form melalui AJAX
+    function submitFormAjax(form, successCallback) {
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton.disabled) return;
+        submitButton.disabled = true;
+
+        fetch(form.action, {
+            method: form.method,
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Terjadi kesalahan server.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                successCallback(data);
+            } else {
+                throw new Error(data.message || 'Terjadi kesalahan. Silakan coba lagi.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert(error.message || 'Terjadi kesalahan. Silakan coba lagi.');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+        });
+    }
+
+    // Fungsi untuk menangani submit form edit proyek
+    function handleEditProjectSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hideModal('editProjectModal');
+                // Perbarui nama dan deskripsi proyek di halaman
+                document.querySelector('h5.text-2xl').textContent = formData.get('name');
+                document.querySelector('p.font-normal').textContent = formData.get('description');
+                // Gunakan fungsi showAlert yang sudah ada di base.html
+                showAlert(data.message, 'success');
+                window.location.reload();
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Terjadi kesalahan saat memperbarui proyek.', 'error');
+        });
+    }
+
+    // Tangani submit form edit proyek
+    const editProjectForm = document.getElementById('editProjectForm');
+    if (editProjectForm) {
+        // Hapus semua event listener yang ada
+        editProjectForm.replaceWith(editProjectForm.cloneNode(true));
+        // Dapatkan referensi baru ke form yang telah di-clone
+        const newEditProjectForm = document.getElementById('editProjectForm');
+        // Tambahkan event listener baru
+        newEditProjectForm.addEventListener('submit', handleEditProjectSubmit);
+    }
+
+    // Menangani submit form untuk membuat tabel baru
+    const createTableForm = document.querySelector('#createTableModal form');
+    if (createTableForm) {
+        createTableForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitFormAjax(this, function(data) {
+                showAlert(data.message || 'Tabel berhasil dibuat.', 'success');
+                hideModal('createTableModal');
+                location.reload(); // Muat ulang halaman untuk menampilkan tabel baru
+            });
+        });
+    }
+
+    // Event listener untuk tombol buat tabel baru
+    const createTableButton = document.querySelector('[data-modal-target="createTableModal"]');
+    if (createTableButton) {
+        createTableButton.addEventListener('click', function() {
+            showModal('createTableModal');
+        });
+    }
+
+    // Event listener untuk menutup modal "createTableModal"
+    const closeCreateTableModalButtons = document.querySelectorAll('[data-modal-hide="createTableModal"]');
+    closeCreateTableModalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            hideModal('createTableModal');
+        });
+    });
+
+    // Event listener untuk tombol impor tabel
+    const importTableButton = document.querySelector('[data-modal-target="importTableModal"]');
+    if (importTableButton) {
+        importTableButton.addEventListener('click', function() {
+            showModal('importTableModal');
+        });
+    }
+
+    // Event listener untuk menutup modal "importTableModal"
+    const closeImportTableModalButtons = document.querySelectorAll('[data-modal-hide="importTableModal"]');
+    closeImportTableModalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            hideModal('importTableModal');
+        });
+    });
+
+    // Menutup modal jika mengklik di luar modal
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('fixed') && event.target.classList.contains('inset-0')) {
+            const modalId = event.target.parentElement.id;
+            hideModal(modalId);
+        }
+    });
+
+    // Event listener untuk form hapus proyek
+    const deleteProjectForm = document.querySelector('#deleteProjectModal form');
+    if (deleteProjectForm) {
+        deleteProjectForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Di sini Anda bisa menambahkan logika tambahan sebelum mengirim form
+            this.submit();
+        });
+    }
+
+    const closeModalButtons = document.querySelectorAll('[data-modal-hide="deleteProjectModal"]');
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            hideModal('deleteProjectModal');
+        });
+    });
+
+    // Event listener untuk tombol hapus proyek
+    const deleteProjectButton = document.querySelector('[data-modal-target="deleteProjectModal"]');
+    if (deleteProjectButton) {
+        deleteProjectButton.addEventListener('click', function() {
+            showModal('deleteProjectModal');
+        });
+    }
+
+    // Event listener untuk menutup modal "deleteProjectModal"
+    const closeDeleteProjectModalButtons = document.querySelectorAll('[data-modal-hide="deleteProjectModal"]');
+    closeDeleteProjectModalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            hideModal('deleteProjectModal');
+        });
+    });
+
+    // Event listener untuk tombol edit proyek
+    const editProjectButton = document.querySelector('[data-modal-target="editProjectModal"]');
+    if (editProjectButton) {
+        editProjectButton.addEventListener('click', function() {
+            showModal('editProjectModal');
+        });
+    }
+
+    // Event listener untuk menutup modal "editProjectModal"
+    const closeEditProjectModalButtons = document.querySelectorAll('[data-modal-hide="editProjectModal"]');
+    closeEditProjectModalButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            hideModal('editProjectModal');
+        });
+    });
+
+
+});
+</script>
+{% endblock %}

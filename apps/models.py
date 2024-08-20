@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth.models import User
 
 class CustomUser(AbstractUser):
     # Field tambahan pada CustomUser, misalnya:
@@ -32,10 +33,22 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
     
+class Project(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='projects')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    shared_users = models.ManyToManyField(CustomUser, related_name='shared_projects', blank=True)
+
+    def __str__(self):
+        return self.name
+    
 class Table(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tables', blank=True, null=True)
     
     def __str__(self):
         return self.name

@@ -2,9 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
-from .models import CustomUser, Table, Column, Data, Relation, Row
+from .models import CustomUser, Table, Column, Row, Project
 from django.db import IntegrityError
-from .forms import CustomUserCreationForm, CustomAuthenticationForm, TableForm, ColumnForm, DataForm
+from .forms import CustomUserCreationForm, CustomAuthenticationForm, TableForm, ColumnForm, DataForm, ProjectForm
 from django.db.models import Prefetch, Count
 from django.urls import reverse
 from django.contrib import messages
@@ -17,6 +17,16 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import TextIOWrapper
 import json
 from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.shortcuts import redirect
+from django.urls import reverse
+from .models import CustomUser
+from django.db.models import Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.http import HttpResponseForbidden
 
 def index(request):
     return redirect('dashboard')
@@ -60,7 +70,7 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    tables = Table.objects.filter(user=request.user).annotate(row_count=Count('rows'))
+    tables = Table.objects.filter(user=request.user, project__isnull=True).annotate(row_count=Count('rows'))
     return render(request, 'dashboard.html', {'tables': tables})
 
 @login_required
@@ -81,7 +91,9 @@ def create_table_view(request):
 
 @login_required
 def table_detail_view(request, table_id):
-    table = get_object_or_404(Table, id=table_id, user=request.user)
+    table = get_object_or_404(Table, id=table_id)
+    if table.user != request.user and (not table.project or request.user not in table.project.shared_users.all()):
+        return HttpResponseForbidden("Anda tidak memiliki akses ke tabel ini.")
     columns = table.columns.all()
     rows = table.rows.all()
 
@@ -112,7 +124,10 @@ def table_detail_view(request, table_id):
     # Tambahkan data untuk kolom dengan relasi
     for column in columns:
         if column.related_table:
-            related_rows = Row.objects.filter(table=column.related_table)
+            if table.project:
+                related_rows = Row.objects.filter(table=column.related_table, table__project=table.project)
+            else:
+                related_rows = Row.objects.filter(table=column.related_table)
             column.related_table_rows = [
                 {
                     'id': row.id,
@@ -121,14 +136,22 @@ def table_detail_view(request, table_id):
                 for row in related_rows
             ]
     
-    user_tables = Table.objects.filter(user=request.user).exclude(id=table_id)
+    if table.project:
+        user_tables = Table.objects.filter(user=request.user, project=table.project).exclude(id=table_id)
+    else:
+        user_tables = Table.objects.filter(user=request.user, project__isnull=True).exclude(id=table_id)
     
     api_url = request.build_absolute_uri(reverse('api_table-detail', args=[table_id]))
 
     # Paginasi
-    paginator = Paginator(data, 15)  # Menampilkan 15 item per halaman
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    items_per_page = request.GET.get('items_per_page', '15')
+    if items_per_page == 'all':
+        page_obj = data
+    else:
+        items_per_page = int(items_per_page)
+        paginator = Paginator(data, items_per_page)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
     # Ganti 'data' dengan 'page_obj' dalam konteks
 
@@ -138,22 +161,19 @@ def table_detail_view(request, table_id):
             action = request.POST.get('action')
             row_id = request.POST.get('row_id')
             if action == 'edit':
-                row = get_object_or_404(Row, id=row_id, table__user=request.user)
+                row = get_object_or_404(Row, id=row_id, table=table)
                 data_json = {}
                 for key, value in request.POST.items():
                     if key.startswith('column_'):
                         column_id = key.split('_')[1]
                         column = get_object_or_404(Column, id=column_id, table=table)
-                        if column.related_table:
-                            data_json[column_id] = value
-                        else:
-                            data_json[column_id] = value
+                        data_json[column_id] = value
                 row.data_json = data_json
                 row.save()
                 messages.success(request, 'Data berhasil diubah.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil diubah'})
             elif action == 'delete':
-                row = get_object_or_404(Row, id=row_id, table__user=request.user)
+                row = get_object_or_404(Row, id=row_id, table=table)
                 row.delete()
                 messages.success(request, 'Data berhasil dihapus.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil dihapus'})
@@ -167,6 +187,19 @@ def table_detail_view(request, table_id):
                 except Exception as e:
                     messages.error(request, f'Terjadi kesalahan: {str(e)}')
                     return JsonResponse({'success': False, 'message': str(e)})
+            elif action == 'add':
+                data_json = {}
+                for key, value in request.POST.items():
+                    if key.startswith('column_'):
+                        column_id = key.split('_')[1]
+                        column = get_object_or_404(Column, id=column_id, table=table)
+                        if column.related_table:
+                            data_json[column_id] = value
+                        else:
+                            data_json[column_id] = value
+                row = Row.objects.create(table=table, data_json=data_json)
+                messages.success(request, 'Data berhasil ditambahkan.')
+                return JsonResponse({'success': True, 'message': 'Data berhasil ditambahkan'})
         return JsonResponse({'success': False, 'message': 'Permintaan tidak valid'})
 
     return render(request, 'table_detail.html', {
@@ -175,12 +208,15 @@ def table_detail_view(request, table_id):
         'page_obj': page_obj,
         'user_tables': user_tables,
         'api_url': api_url,
-        'total_rows': table.rows.count()  # Tambahkan ini
+        'total_rows': table.rows.count(),
+        'items_per_page': items_per_page
     })
 
 @login_required
 def add_column_view(request, table_id):
-    table = get_object_or_404(Table, id=table_id, user=request.user)
+    table = get_object_or_404(Table, id=table_id)
+    if table.user != request.user and (not table.project or request.user not in table.project.shared_users.all()):
+        return HttpResponseForbidden("Anda tidak memiliki akses untuk menambah kolom pada tabel ini.")
     if request.method == 'POST':
         form = ColumnForm(request.POST, user=request.user, current_table=table)
         if form.is_valid():
@@ -194,7 +230,7 @@ def add_column_view(request, table_id):
     else:
         form = ColumnForm(user=request.user, current_table=table)
     
-    user_tables = Table.objects.filter(user=request.user).exclude(id=table_id)
+    user_tables = Table.objects.filter(Q(user=request.user) | Q(project__shared_users=request.user)).exclude(id=table_id)
     
     return render(request, 'table_detail.html', {
         'form': form, 
@@ -204,7 +240,11 @@ def add_column_view(request, table_id):
 
 @login_required
 def add_data_view(request, table_id):
-    table = get_object_or_404(Table, id=table_id, user=request.user)
+    table = get_object_or_404(Table, id=table_id)
+    if table.user != request.user and (not table.project or request.user not in table.project.shared_users.all()):
+        return HttpResponseForbidden("Anda tidak memiliki akses untuk menambah data pada tabel ini.")
+    columns = table.column_set.all()
+    
     if request.method == 'POST':
         form = DataForm(request.POST, request.FILES, table=table)
         if form.is_valid():
@@ -226,12 +266,14 @@ def add_data_view(request, table_id):
             messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
     else:
         form = DataForm(table=table)
-    return render(request, 'table_detail.html', {'form': form, 'table': table})
+    return render(request, 'modal.html', {'form': form, 'table': table, 'columns': columns})
 
 @login_required
 def edit_data_view(request, row_id):
-    row = get_object_or_404(Row, id=row_id, table__user=request.user)
+    row = get_object_or_404(Row, id=row_id)
     table = row.table
+    if table.user != request.user and (not table.project or request.user not in table.project.shared_users.all()):
+        return HttpResponseForbidden("Anda tidak memiliki akses untuk mengedit data pada tabel ini.")
     columns = table.columns.all()
 
     if request.method == 'POST':
@@ -251,8 +293,11 @@ def edit_data_view(request, row_id):
 
 @login_required
 def delete_data_view(request, row_id):
-    row = get_object_or_404(Row, id=row_id, table__user=request.user)
-    table_id = row.table.id
+    row = get_object_or_404(Row, id=row_id)
+    table = row.table
+    if table.user != request.user and (not table.project or request.user not in table.project.shared_users.all()):
+        return HttpResponseForbidden("Anda tidak memiliki akses untuk menghapus data pada tabel ini.")
+    table_id = table.id
     row.delete()
     messages.success(request, 'Data berhasil dihapus.')
     return redirect('table_detail', table_id=table_id)
@@ -273,8 +318,13 @@ def edit_table_view(request, table_id):
 @login_required
 def delete_table_view(request, table_id):
     table = get_object_or_404(Table, id=table_id, user=request.user)
-    table.delete()
-    messages.success(request, 'Tabel berhasil dihapus.')
+    if table.project:
+        table.delete()
+        messages.success(request, 'Tabel berhasil dihapus.')
+        return redirect('project_detail', project_id=table.project.id)
+    else:
+        table.delete()
+        messages.success(request, 'Tabel berhasil dihapus.')
     return redirect('dashboard')
 
 @login_required
@@ -492,3 +542,164 @@ def delete_column_view(request, table_id, column_id):
     
     messages.warning(request, 'Konfirmasi penghapusan kolom.')
     return render(request, 'table_detail.html', {'table': table, 'column': column})
+
+@login_required
+def project_list(request):
+    owned_projects = Project.objects.filter(user=request.user)
+    shared_projects = request.user.shared_projects.all()
+    projects = list(owned_projects) + list(shared_projects)
+    return render(request, 'project_list.html', {'projects': projects})
+
+@login_required
+def create_project(request):
+    if request.method == 'POST':
+        form = ProjectForm(request.POST)
+        if form.is_valid():
+            project = form.save(commit=False)
+            project.user = request.user
+            project.save()
+            messages.success(request, 'Proyek berhasil dibuat.')
+            return JsonResponse({
+                'success': True,
+                'message': 'Proyek berhasil dibuat.',
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Terjadi kesalahan. Silakan periksa form Anda.',
+                'errors': form.errors
+            }, status=400)
+    return JsonResponse({'success': False, 'message': 'Metode tidak diizinkan.'}, status=405)
+
+@login_required
+def project_detail(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if project.user != request.user and request.user not in project.shared_users.all():
+        return JsonResponse({'success': False, 'message': 'Anda tidak memiliki akses ke proyek ini.'}, status=403)
+    tables = Table.objects.filter(project=project)
+    return render(request, 'project_detail.html', {'project': project, 'tables': tables})
+
+@login_required
+def create_table(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if project.user != request.user and request.user not in project.shared_users.all():
+        return JsonResponse({'success': False, 'message': 'Anda tidak memiliki akses ke proyek ini.'}, status=403)
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            form = TableForm(request.POST)
+            if form.is_valid():
+                table = form.save(commit=False)
+                table.user = project.user  # Set user to project owner
+                table.project = project
+                table.save()
+                messages.success(request, 'Tabel berhasil dibuat.')
+                return JsonResponse({'success': True, 'redirect_url': reverse('project_detail', args=[project_id])})
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+                return JsonResponse({'success': False, 'redirect_url': reverse('project_detail', args=[project_id])}, status=400)
+        except Exception as e:
+            messages.error(request, str(e))
+            return JsonResponse({'success': False}, status=400)
+    return JsonResponse({'success': False, 'message': 'Metode tidak diizinkan.'}, status=405)
+
+@login_required
+def delete_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    if request.method == 'POST':
+        project.delete()
+        messages.success(request, 'Proyek berhasil dihapus.')
+        return redirect('project_list')
+    return redirect('project_detail', project_id=project_id)
+
+@login_required
+def edit_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if project.user != request.user and request.user not in project.shared_users.all():
+        return JsonResponse({'success': False, 'message': 'Anda tidak memiliki akses ke proyek ini.'}, status=403)
+    if request.method == 'POST':
+        form = ProjectForm(request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Proyek berhasil diperbarui.')
+            return JsonResponse({'success': True, 'message': 'Proyek berhasil diperbarui.', 'redirect_url': reverse('project_detail', args=[project_id])})
+        else:
+            messages.error(request, 'Terjadi kesalahan. Silakan periksa form Anda.')
+            return JsonResponse({'success': False, 'message': 'Terjadi kesalahan. Silakan periksa form Anda.'}, status=400)
+    return JsonResponse({'success': False, 'message': 'Metode tidak diizinkan.'}, status=405)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_users(request):
+    term = request.GET.get('term', '')
+    users = CustomUser.objects.filter(
+        Q(username__icontains=term) | Q(email__icontains=term)
+    ).exclude(id=request.user.id).exclude(is_superuser=True)[:5]  # Batasi hasil pencarian dan kecualikan superuser
+    data = [{'id': user.id, 'username': user.username, 'avatar': user.avatar.url if user.avatar else None} for user in users]
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def shared_users(request, project_id):
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    shared_users = project.shared_users.all()
+    data = [{'id': user.id, 'username': user.username, 'avatar': user.avatar.url if user.avatar else None} for user in shared_users]
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def share_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    user_ids = request.data.get('users', [])
+    users_to_share = CustomUser.objects.filter(id__in=user_ids)
+    project.shared_users.set(users_to_share)
+    messages.success(request, 'Proyek berhasil dibagikan.')
+    return Response({'success': True, 'message': 'Proyek berhasil dibagikan.'})
+
+@login_required
+def import_table_to_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if project.user != request.user and request.user not in project.shared_users.all():
+        return JsonResponse({'success': False, 'message': 'Anda tidak memiliki akses ke proyek ini.'}, status=403)
+    
+    if request.method == 'POST' and request.FILES.get('file'):
+        table_name = request.POST.get('table_name')
+        file = request.FILES['file']
+        file_extension = file.name.split('.')[-1].lower()
+        
+        if file_extension == 'csv':
+            csv_file = TextIOWrapper(file, encoding='utf-8')
+            reader = csv.DictReader(csv_file)
+            headers = reader.fieldnames
+        elif file_extension in ['xlsx', 'xls']:
+            workbook = openpyxl.load_workbook(file)
+            sheet = workbook.active
+            headers = [cell.value for cell in sheet[1]]
+            reader = [
+                {headers[i]: cell.value for i, cell in enumerate(row)}
+                for row in sheet.iter_rows(min_row=2)
+            ]
+        else:
+            messages.error(request, 'Format file tidak didukung. Gunakan CSV atau Excel.')
+            return redirect('project_detail', project_id=project.id)
+
+        new_table = Table.objects.create(name=table_name, user=request.user, project=project)
+
+        for header in headers:
+            Column.objects.create(name=header, table=new_table)
+
+        for row in reader:
+            new_row = Row(table=new_table)
+            data_json = {
+                str(new_table.columns.get(name=column_name).id): str(value) if value is not None else ''
+                for column_name, value in row.items()
+            }
+            new_row.data_json = data_json
+            new_row.save()
+
+        messages.success(request, 'Tabel baru berhasil diimpor ke dalam proyek.')
+        return redirect('project_detail', project_id=project.id)
+
+    messages.error(request, 'Terjadi kesalahan saat mengimpor tabel.')
+    return redirect('project_detail', project_id=project.id)

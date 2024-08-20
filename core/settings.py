@@ -33,7 +33,7 @@ ALLOWED_HOSTS = ['liardb.endofbeginning.online','localhost','127.0.0.1']
 
 INSTALLED_APPS = [
     
-    # 'jazzmin',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -134,9 +134,9 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-COMPRESS_ROOT = BASE_DIR / 'static'
+COMPRESS_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-COMPRESS_ENABLED = True
+COMPRESS_ENABLED = False
 
 STATICFILES_FINDERS = ('compressor.finders.CompressorFinder', 'django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder')
 

@@ -5,7 +5,8 @@ from .models import *
 admin.site.register(Table)
 admin.site.register(Column)
 admin.site.register(Row)
-admin.site.register(Data)
 admin.site.register(Relation)
+admin.site.register(Data)
 admin.site.register(CustomUser)
+admin.site.register(Project)
 

@@ -1,0 +1,370 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Daftar Proyek{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="w-full p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+            <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Daftar Proyek</h1>
+            <button data-modal-target="createProjectModal" data-modal-toggle="createProjectModal" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+                <svg class="w-5 h-5 mr-2 -ml-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                Buat Proyek Baru
+            </button>
+        </div>
+        <p class="font-normal text-gray-700 dark:text-gray-400">Kelola proyek-proyek Anda di sini. Anda dapat membuat proyek baru atau melihat detail proyek yang sudah ada.</p>
+    </div>
+</div>
+
+<div class="flex flex-wrap gap-4 px-4">
+    {% for project in projects %}
+    <div class="w-full max-w-md p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+        <div class="flex justify-between items-start mb-2">
+            <h5 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ project.name }}</h5>
+            <div class="relative">
+                {% if project.user == request.user %}
+                    {% if project.shared_users.exists %}
+                        <a href="#" class="bg-green-100 hover:bg-green-200 text-green-800 text-xs font-semibold me-2 px-2.5 py-0.5 rounded-full dark:bg-gray-700 dark:text-green-400 border border-green-400 inline-flex items-center justify-center" data-modal-target="shareModal" data-modal-toggle="shareModal" data-project-id="{{ project.id }}" data-project-name="{{ project.name }}">
+                            Dibagikan
+                        </a>
+                    {% else %}
+                        <a href="#" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-semibold me-2 px-2.5 py-0.5 rounded-full dark:bg-gray-700 dark:text-blue-400 border border-blue-400 inline-flex items-center justify-center" data-modal-target="shareModal" data-modal-toggle="shareModal" data-project-id="{{ project.id }}" data-project-name="{{ project.name }}">
+                            Bagikan
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="#" class="bg-red-100 hover:bg-red-200 text-red-800 text-xs font-semibold me-2 px-2.5 py-0.5 rounded-full dark:bg-gray-700 dark:text-red-400 border border-red-400 inline-flex items-center justify-center">Dibagikan oleh {{ project.user.username }}</a>
+                {% endif %}
+            </div>
+        </div>
+        <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">{{ project.description }}</p>
+        <div class="flex items-center mb-3">
+            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">Jumlah Tabel: {{ project.tables.count }}</span>
+        </div>
+        <div class="flex items-center mb-3">
+            <div class="flex -space-x-2 mr-2">
+                {% for shared_user in project.shared_users.all|slice:":3" %}
+                    <img class="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800" src="{{ shared_user.avatar.url|default:'/static/images/default-avatar.png' }}" alt="{{ shared_user.username }}" onerror="this.src='/static/images/default-avatar.png'">
+                {% endfor %}
+                {% if project.shared_users.count > 3 %}
+                    <span class="flex items-center justify-center w-6 h-6 text-xs font-medium text-white bg-gray-400 rounded-full">+{{ project.shared_users.count|add:"-3" }}</span>
+                {% endif %}
+            </div>
+            {% if project.shared_users.exists %}
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Dibagikan dengan {{ project.shared_users.count }} pengguna</span>
+            {% endif %}
+        </div>
+        <a href="{% url 'project_detail' project.id %}" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+            Lihat Detail
+            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+    </div>
+    {% empty %}
+    <div class="w-full text-center">
+        <p class="text-gray-500 dark:text-gray-400">Anda belum memiliki proyek. Silakan buat proyek baru.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Berbagi -->
+<div id="shareModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="shareModalTitle">
+                    Bagikan Proyek
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="shareModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 md:p-5">
+                <input type="hidden" id="shareProjectId" value="">
+                <div class="mb-4">
+                    <label for="userSearch" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cari Pengguna</label>
+                    <input type="text" id="userSearch" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Ketik nama pengguna...">
+                </div>
+                <div id="userSearchResults" class="mb-4 max-h-40 overflow-y-auto"></div>
+                <div class="mb-4">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Pengguna Terpilih</h4>
+                    <div id="selectedUsers" class="space-y-2"></div>
+                </div>
+                <button id="shareButton" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                    Bagikan Proyek
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Buat Proyek Baru -->
+<div id="createProjectModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Buat Proyek Baru
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="createProjectModal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Tutup modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <form id="createProjectForm" action="{% url 'create_project' %}" method="post" class="p-4 md:p-5">
+                {% csrf_token %}
+                <div class="grid gap-4 mb-4 grid-cols-2">
+                    <div class="col-span-2">
+                        <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Proyek</label>
+                        <input type="text" name="name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
+                    </div>
+                    <div class="col-span-2">
+                        <label for="description" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Deskripsi Proyek</label>
+                        <textarea name="description" id="description" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"></textarea>
+                    </div>
+                </div>
+                <button id="createProjectButton" type="submit" class="text-white inline-flex items-center bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+                    <svg class="me-1 -ms-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                    Buat Proyek
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+// Fungsi untuk mengirim form melalui AJAX
+function submitFormAjax(form, successCallback, errorCallback) {
+    fetch(form.action, {
+        method: form.method,
+        body: new FormData(form),
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            successCallback(data);
+        } else {
+            errorCallback(data.message || 'Terjadi kesalahan. Silakan coba lagi.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorCallback('Terjadi kesalahan. Silakan coba lagi.');
+    });
+}
+
+function hideCreateProjectModal() {
+    const modal = document.getElementById('createProjectModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+}
+
+// Menangani submit form untuk membuat proyek baru
+const createProjectForm = document.querySelector('#createProjectForm');
+if (createProjectForm) {
+    createProjectForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitButton = this.querySelector('button[type="submit"]');
+        if (submitButton.disabled) return;
+        submitButton.disabled = true;
+        
+        submitFormAjax(
+            this,
+            function(data) {
+                window.location.reload();
+                createProjectForm.reset(); // Reset form setelah berhasil
+            },
+            function(errorMessage) {
+                showAlert(errorMessage, 'error');
+                submitButton.disabled = false;
+            }
+        );
+    });
+}
+
+// Fungsi untuk menampilkan alert
+function showAlert(message, type) {
+    const alertContainer = document.createElement('div');
+    alertContainer.id = `alert-${Date.now()}`;
+    alertContainer.className = `fixed top-4 right-4 p-4 rounded-lg ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between`;
+    
+    alertContainer.innerHTML = `
+        <span>${message}</span>
+        <button type="button" class="text-white hover:text-gray-200 focus:outline-none" onclick="this.closest('div').remove()">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </button>
+    `;
+
+    document.body.appendChild(alertContainer);
+
+    setTimeout(() => {
+        alertContainer.remove();
+    }, 5000);
+}
+
+function loadSharedUsers(projectId) {
+    fetch(`/api/shared-users/${projectId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const selectedUsersDiv = document.getElementById('selectedUsers');
+            selectedUsersDiv.innerHTML = '';
+            data.forEach(user => {
+                addSelectedUser(user);
+            });
+        });
+}
+
+function searchUsers(query) {
+    if (query.length >= 2) {
+        fetch(`/api/search-users/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('userSearchResults');
+                resultsDiv.innerHTML = '';
+                data.forEach(user => {
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'flex items-center p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg';
+                    userDiv.innerHTML = `
+                        <img class="w-8 h-8 rounded-full mr-2" src="${user.avatar || '/static/images/default-avatar.png'}" alt="${user.username}" onerror="this.src='/static/images/default-avatar.png'">
+                        <span class="text-gray-800 dark:text-gray-200">${user.username}</span>
+                    `;
+                    userDiv.onclick = () => addSelectedUser(user);
+                    resultsDiv.appendChild(userDiv);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    } else {
+        document.getElementById('userSearchResults').innerHTML = '';
+    }
+}
+
+function addSelectedUser(user) {
+    const selectedUsersDiv = document.getElementById('selectedUsers');
+    if (!document.querySelector(`[data-user-id="${user.id}"]`)) {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-2 rounded-lg';
+        userDiv.innerHTML = `
+            <div class="flex items-center">
+                <img class="w-8 h-8 rounded-full mr-2" src="${user.avatar || '/static/images/default-avatar.png'}" alt="${user.username}" onerror="this.src='/static/images/default-avatar.png'">
+                <span class="text-gray-800 dark:text-gray-200">${user.username}</span>
+            </div>
+            <button class="text-red-500 hover:text-red-700" onclick="removeSelectedUser(this)">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                </svg>
+            </button>
+        `;
+        userDiv.dataset.userId = user.id;
+        selectedUsersDiv.appendChild(userDiv);
+    }
+    document.getElementById('userSearch').value = '';
+    document.getElementById('userSearchResults').innerHTML = '';
+}
+
+function removeSelectedUser(button) {
+    button.parentElement.remove();
+}
+
+document.getElementById('userSearch').addEventListener('input', function() {
+    searchUsers(this.value);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const shareButtons = document.querySelectorAll('[data-modal-target="shareModal"]');
+    shareButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const projectId = this.getAttribute('data-project-id');
+            const projectName = this.getAttribute('data-project-name');
+            document.getElementById('shareProjectId').value = projectId;
+            document.getElementById('shareModalTitle').textContent = `Bagikan Proyek: ${projectName}`;
+            document.getElementById('userSearch').value = '';
+            document.getElementById('userSearchResults').innerHTML = '';
+            document.getElementById('selectedUsers').innerHTML = '';
+            loadSharedUsers(projectId);
+        });
+    });
+
+    document.getElementById('shareButton').addEventListener('click', function() {
+        const projectId = document.getElementById('shareProjectId').value;
+        const selectedUsers = Array.from(document.getElementById('selectedUsers').children).map(div => div.dataset.userId);
+        
+        fetch(`/api/share-project/${projectId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ users: selectedUsers })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Proyek berhasil dibagikan', 'success');
+                location.reload();
+            } else {
+                showAlert('Gagal membagikan proyek', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Terjadi kesalahan saat membagikan proyek', 'error');
+        });
+    });
+});
+
+// Fungsi untuk mendapatkan CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Menangani klik di luar modal untuk menutup modal berbagi
+document.addEventListener('click', function(event) {
+    const shareModal = document.getElementById('shareModal');
+    if (event.target === shareModal) {
+        window.location.reload();
+    }
+});
+
+</script>
+
+{% endblock %}
