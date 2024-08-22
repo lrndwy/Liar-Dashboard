@@ -53,7 +53,7 @@ def generate_mermaid(project):
     for table in tables:
         for column in table.columns.all():
             if column.related_table:
-                mermaid_code += f"    {table.name.replace(" ", "_")} ||--o{{ {column.related_table.name.replace(" ", "_")} : {column.name.replace(" ", "_")}\n"
+                mermaid_code += f"    {table.name.replace(' ', '_')} ||--o{{ {column.related_table.name.replace(' ', '_')} : {column.name.replace(' ', '_')}\\n"
     
     return mermaid_code
 
