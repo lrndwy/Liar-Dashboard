@@ -40,20 +40,37 @@
         document.getElementById('downloadButton').addEventListener('click', function() {
             const svg = document.querySelector(".mermaid svg");
             const svgData = new XMLSerializer().serializeToString(svg);
+            
+            // Buat elemen SVG baru dengan ukuran yang lebih besar
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgData, "image/svg+xml");
+            const newSvg = svgDoc.documentElement;
+            
+            // Tingkatkan resolusi dengan mengalikan ukuran SVG
+            const scaleFactor = 4; // Anda bisa menyesuaikan faktor ini
+            const width = parseFloat(newSvg.getAttribute("width")) * scaleFactor;
+            const height = parseFloat(newSvg.getAttribute("height")) * scaleFactor;
+            
+            newSvg.setAttribute("width", width);
+            newSvg.setAttribute("height", height);
+            newSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            
+            const newSvgData = new XMLSerializer().serializeToString(newSvg);
+            
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             const img = new Image();
             img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
                 const pngFile = canvas.toDataURL("image/png");
                 const downloadLink = document.createElement("a");
-                downloadLink.download = "ERD.png";
+                downloadLink.download = "ERD_HighRes.png";
                 downloadLink.href = pngFile;
                 downloadLink.click();
             };
-            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(newSvgData)));
         });
     </script>
 </body>
