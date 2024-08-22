@@ -295,16 +295,38 @@ def table_detail_view(request, table_id):
         Q(table=table) | Q(row__table=table)
     ).order_by('-timestamp')[:3]
 
-    return render(request, 'table_detail.html', {
+    # Hitung jumlah data relasi untuk setiap kolom relasi
+    relation_data = []
+    for column in columns:
+        if column.related_table:
+            related_table_name = column.related_table.name
+            related_data = {}
+            for related_row in column.related_table.rows.all():
+                related_value = related_row.data_json.get(str(column.related_table.columns.first().id), '')
+                count = 0
+                for row in table.rows.all():
+                    if row.data_json.get(str(column.id)) == str(related_row.id):
+                        count += 1
+                if count > 0:
+                    related_data[related_value] = count
+            if related_data:
+                relation_data.append({
+                    'column_name': column.name,
+                    'related_table': related_table_name,
+                    'data': related_data
+                })
+
+    context = {
         'table': table,
         'columns': columns,
         'page_obj': page_obj,
+        'items_per_page': items_per_page,
+        'total_rows': rows.count(),
         'user_tables': user_tables,
         'api_url': api_url,
-        'total_rows': table.rows.count(),
-        'items_per_page': items_per_page,
-        'recent_activities': recent_activities,
-    })
+        'relation_data': relation_data,
+    }
+    return render(request, 'table_detail.html', context)
 
 @login_required
 def add_column_view(request, table_id):
