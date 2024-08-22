@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
-from .models import CustomUser, Table, Column, Row, Project
+from .models import CustomUser, Table, Column, Row, Project, ActivityLog
 from django.db import IntegrityError
 from .forms import CustomUserCreationForm, CustomAuthenticationForm, TableForm, ColumnForm, DataForm, ProjectForm
 from django.db.models import Prefetch, Count
@@ -27,6 +27,46 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.http import HttpResponseForbidden
+from django.db.models import Q
+from .models import ActivityLog
+
+from django.contrib.auth import get_user_model
+
+def log_activity(user, table, action, description):
+    ActivityLog.objects.create(
+        user=user,
+        table=table,
+        action=action,
+        description=description
+    )
+    
+@login_required
+def print_table(request, table_id):
+    table = get_object_or_404(Table, id=table_id, user=request.user)
+    columns = table.columns.all()
+    rows = table.rows.all()
+    data = []
+    
+    for row in rows:
+        row_data = []
+        for column in columns:
+            value = row.data_json.get(str(column.id), '')
+            if column.related_table and value:
+                try:
+                    related_row = Row.objects.filter(id=int(value), table=column.related_table).first()
+                    if related_row:
+                        value = related_row.data_json.get(str(related_row.table.columns.first().id), '')
+                except ValueError:
+                    value = ''
+            row_data.append(value)
+        data.append(row_data)
+    
+    context = {
+        'table': table,
+        'columns': columns,
+        'data': data,
+    }
+    return render(request, 'print_table.html', context)
 
 def index(request):
     return redirect('dashboard')
@@ -81,6 +121,7 @@ def create_table_view(request):
             table = form.save(commit=False)
             table.user = request.user
             table.save()
+            log_activity(request.user, table, 'create_table', f'Membuat tabel {table.name}')
             messages.success(request, 'Tabel berhasil dibuat.')
             return redirect('table_detail', table_id=table.id)
         else:
@@ -170,11 +211,13 @@ def table_detail_view(request, table_id):
                         data_json[column_id] = value
                 row.data_json = data_json
                 row.save()
+                log_activity(request.user, table, 'edit', f'Mengedit data dengan ID {row_id}')
                 messages.success(request, 'Data berhasil diubah.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil diubah'})
             elif action == 'delete':
                 row = get_object_or_404(Row, id=row_id, table=table)
                 row.delete()
+                log_activity(request.user, table, 'delete', f'Menghapus data dengan ID {row_id}')
                 messages.success(request, 'Data berhasil dihapus.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil dihapus'})
             elif action == 'bulk_delete':
@@ -182,6 +225,7 @@ def table_detail_view(request, table_id):
                 try:
                     # Lakukan penghapusan data berdasarkan row_ids
                     Row.objects.filter(id__in=row_ids).delete()
+                    log_activity(request.user, table, 'bulk_delete', f'Menghapus {len(row_ids)} data')
                     messages.success(request, 'Data berhasil dihapus.')
                     return JsonResponse({'success': True, 'message': 'Data berhasil dihapus.'})
                 except Exception as e:
@@ -198,9 +242,15 @@ def table_detail_view(request, table_id):
                         else:
                             data_json[column_id] = value
                 row = Row.objects.create(table=table, data_json=data_json)
+                log_activity(request.user, table, 'add', 'Menambahkan data baru')
                 messages.success(request, 'Data berhasil ditambahkan.')
                 return JsonResponse({'success': True, 'message': 'Data berhasil ditambahkan'})
         return JsonResponse({'success': False, 'message': 'Permintaan tidak valid'})
+
+    # Ambil 3 aktivitas terakhir terkait tabel ini
+    recent_activities = ActivityLog.objects.filter(
+        Q(table=table) | Q(row__table=table)
+    ).order_by('-timestamp')[:3]
 
     return render(request, 'table_detail.html', {
         'table': table,
@@ -209,7 +259,8 @@ def table_detail_view(request, table_id):
         'user_tables': user_tables,
         'api_url': api_url,
         'total_rows': table.rows.count(),
-        'items_per_page': items_per_page
+        'items_per_page': items_per_page,
+        'recent_activities': recent_activities,
     })
 
 @login_required
@@ -223,6 +274,7 @@ def add_column_view(request, table_id):
             column = form.save(commit=False)
             column.table = table
             column.save()
+            log_activity(request.user, table, 'add_column', f'Menambahkan kolom {column.name}')
             messages.success(request, 'Kolom berhasil ditambahkan.')
             return redirect('table_detail', table_id=table.id)
         else:
@@ -260,6 +312,7 @@ def add_data_view(request, table_id):
                         data_json[column_id] = str(value) if value is not None else ''
             row.data_json = data_json
             row.save()
+            log_activity(request.user, table, 'add_data', 'Menambahkan data baru')
             messages.success(request, 'Data berhasil ditambahkan.')
             return redirect('table_detail', table_id=table.id)
         else:
@@ -286,6 +339,7 @@ def edit_data_view(request, row_id):
                 data_json[column.name] = value
         row.data_json = data_json
         row.save()
+        log_activity(request.user, table, 'edit_data', f'Mengedit data dengan ID {row_id}')
         messages.success(request, 'Data berhasil diubah.')
         return redirect('table_detail', table_id=table.id)
 
@@ -299,6 +353,7 @@ def delete_data_view(request, row_id):
         return HttpResponseForbidden("Anda tidak memiliki akses untuk menghapus data pada tabel ini.")
     table_id = table.id
     row.delete()
+    log_activity(request.user, table, 'delete_data', f'Menghapus data dengan ID {row_id}')
     messages.success(request, 'Data berhasil dihapus.')
     return redirect('table_detail', table_id=table_id)
 
@@ -309,6 +364,7 @@ def edit_table_view(request, table_id):
         form = TableForm(request.POST, instance=table)
         if form.is_valid():
             form.save()
+            log_activity(request.user, table, 'edit_table', f'Mengedit tabel {table.name}')
             messages.success(request, 'Tabel berhasil diubah.')
             return redirect('table_detail', table_id=table.id)
         else:
@@ -318,12 +374,16 @@ def edit_table_view(request, table_id):
 @login_required
 def delete_table_view(request, table_id):
     table = get_object_or_404(Table, id=table_id, user=request.user)
+    table_name = table.name
     if table.project:
+        project = table.project
         table.delete()
+        log_activity(request.user, None, 'delete_table', f'Menghapus tabel {table_name} dari proyek {project.name}')
         messages.success(request, 'Tabel berhasil dihapus.')
-        return redirect('project_detail', project_id=table.project.id)
+        return redirect('project_detail', project_id=project.id)
     else:
         table.delete()
+        log_activity(request.user, None, 'delete_table', f'Menghapus tabel {table_name}')
         messages.success(request, 'Tabel berhasil dihapus.')
     return redirect('dashboard')
 
@@ -465,6 +525,7 @@ def import_data(request, table_id):
             new_row.data_json = data_json
             new_row.save()
 
+        log_activity(request.user, table, 'import_data', 'Mengimpor data')
         messages.success(request, 'Data berhasil diimpor.')
         return redirect('table_detail', table_id=table.id)
 
@@ -507,6 +568,7 @@ def import_table(request):
             new_row.data_json = data_json
             new_row.save()
 
+        log_activity(request.user, new_table, 'import_table', f'Mengimpor tabel {new_table.name}')
         messages.success(request, 'Tabel baru berhasil diimpor.')
         return redirect('table_detail', table_id=new_table.id)
 
@@ -521,6 +583,7 @@ def edit_column_view(request, table_id, column_id):
         form = ColumnForm(request.POST, instance=column, user=request.user, current_table=table)
         if form.is_valid():
             form.save()
+            log_activity(request.user, table, 'edit_column', f'Mengedit kolom {column.name}')
             messages.success(request, 'Kolom berhasil diubah.')
             return redirect('table_detail', table_id=table.id)
         else:
@@ -537,6 +600,7 @@ def delete_column_view(request, table_id, column_id):
     
     if request.method == 'POST':
         column.delete()
+        log_activity(request.user, table, 'delete_column', f'Menghapus kolom {column.name}')
         messages.success(request, 'Kolom berhasil dihapus.')
         return redirect('table_detail', table_id=table.id)
     
@@ -558,6 +622,7 @@ def create_project(request):
             project = form.save(commit=False)
             project.user = request.user
             project.save()
+            log_activity(request.user, None, 'create_project', f'Membuat proyek {project.name}')
             messages.success(request, 'Proyek berhasil dibuat.')
             return JsonResponse({
                 'success': True,
@@ -592,6 +657,7 @@ def create_table(request, project_id):
                 table.user = project.user  # Set user to project owner
                 table.project = project
                 table.save()
+                log_activity(request.user, table, 'create_table', f'Membuat tabel {table.name} di proyek {project.name}')
                 messages.success(request, 'Tabel berhasil dibuat.')
                 return JsonResponse({'success': True, 'redirect_url': reverse('project_detail', args=[project_id])})
             else:
@@ -609,6 +675,7 @@ def delete_project(request, project_id):
     project = get_object_or_404(Project, id=project_id, user=request.user)
     if request.method == 'POST':
         project.delete()
+        log_activity(request.user, None, 'delete_project', f'Menghapus proyek {project.name}')
         messages.success(request, 'Proyek berhasil dihapus.')
         return redirect('project_list')
     return redirect('project_detail', project_id=project_id)
@@ -622,6 +689,7 @@ def edit_project(request, project_id):
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
             form.save()
+            log_activity(request.user, None, 'edit_project', f'Mengedit proyek {project.name}')
             messages.success(request, 'Proyek berhasil diperbarui.')
             return JsonResponse({'success': True, 'message': 'Proyek berhasil diperbarui.', 'redirect_url': reverse('project_detail', args=[project_id])})
         else:
@@ -662,6 +730,7 @@ def share_project(request, project_id):
     user_ids = request.data.get('users', [])
     users_to_share = CustomUser.objects.filter(id__in=user_ids)
     project.shared_users.set(users_to_share)
+    log_activity(request.user, None, 'share_project', f'Membagikan proyek {project.name} ke {", ".join([user.username for user in users_to_share])}')
     messages.success(request, 'Proyek berhasil dibagikan.')
     return Response({'success': True, 'message': 'Proyek berhasil dibagikan.'})
 
@@ -706,6 +775,7 @@ def import_table_to_project(request, project_id):
             new_row.data_json = data_json
             new_row.save()
 
+        log_activity(request.user, new_table, 'import_table', f'Mengimpor tabel {new_table.name} ke proyek {project.name}')
         messages.success(request, 'Tabel baru berhasil diimpor ke dalam proyek.')
         return redirect('project_detail', project_id=project.id)
 

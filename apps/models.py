@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.contrib.auth import get_user_model
 class CustomUser(AbstractUser):
     # Field tambahan pada CustomUser, misalnya:
     
@@ -48,7 +48,7 @@ class Table(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='tables')
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tables')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tables', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -82,3 +82,14 @@ class Relation(models.Model):
 
     def __str__(self):
         return f"{self.source_table.name}.{self.source_column.name} -> {self.target_table.name}.{self.target_column.name}"
+
+class ActivityLog(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    table = models.ForeignKey('Table', on_delete=models.CASCADE, null=True, blank=True)
+    row = models.ForeignKey('Row', on_delete=models.CASCADE, null=True, blank=True)
+    action = models.CharField(max_length=50)
+    description = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.action} - {self.timestamp}"
