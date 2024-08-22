@@ -32,6 +32,45 @@ from .models import ActivityLog
 
 from django.contrib.auth import get_user_model
 
+import requests
+import base64
+from django.http import HttpResponse
+from django.urls import reverse
+import zlib
+
+def generate_mermaid(project):
+    tables = project.tables.all()
+    mermaid_code = "erDiagram\n"
+    
+    for table in tables:
+        table_name = table.name.replace(" ", "_")
+        mermaid_code += f"    {table_name} {{\n"
+        for column in table.columns.all():
+            column_not_space = column.name.replace(" ", "_")
+            mermaid_code += f"        string {column_not_space}\n"
+        mermaid_code += "    }\n"
+    
+    for table in tables:
+        for column in table.columns.all():
+            if column.related_table:
+                mermaid_code += f"    {table.name.replace(" ", "_")} ||--o{{ {column.related_table.name.replace(" ", "_")} : {column.name.replace(" ", "_")}\n"
+    
+    return mermaid_code
+
+@login_required
+def export_erd(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if project.user != request.user and request.user not in project.shared_users.all():
+        return HttpResponse("Anda tidak memiliki akses ke proyek ini.", status=403)
+    
+    mermaid_code = generate_mermaid(project)
+    
+    context = {
+        'mermaid_code': mermaid_code,
+    }
+    
+    return render(request, 'erd.html', context)
+
 def log_activity(user, table, action, description):
     ActivityLog.objects.create(
         user=user,
@@ -156,10 +195,14 @@ def table_detail_view(request, table_id):
                 try:
                     related_row = Row.objects.filter(id=int(value), table=column.related_table).first()
                     if related_row:
-                        value = related_row.data_json.get(str(related_row.table.columns.first().id), '')
+                        display_value = related_row.data_json.get(str(related_row.table.columns.first().id), '')
+                        row_data['values'].append(display_value)
+                    else:
+                        row_data['values'].append('')
                 except ValueError:
-                    value = ''
-            row_data['values'].append(value)
+                    row_data['values'].append('')
+            else:
+                row_data['values'].append(value)
         data.append(row_data)
     
     # Tambahkan data untuk kolom dengan relasi

@@ -9,3 +9,4 @@ def get_item(list_or_dict, key):
     elif isinstance(list_or_dict, dict):
         return list_or_dict.get(str(key), '')
     return ''
+

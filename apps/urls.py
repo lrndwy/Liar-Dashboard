@@ -55,4 +55,5 @@ urlpatterns = [
       path('api/share-project/<int:project_id>/', views.share_project, name='share_project'),
       path('project/<int:project_id>/import-table/', views.import_table_to_project, name='import_table_to_project'),
       path('tables/<int:table_id>/print/', views.print_table, name='print_table'),
+      path('export-erd/<int:project_id>/', views.export_erd, name='export_erd'),
 ]
