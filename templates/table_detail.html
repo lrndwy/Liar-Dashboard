@@ -84,7 +84,7 @@
                         <ul class="space-y-3">
                             {% for activity in recent_activities %}
                                 <li class="text-sm text-gray-700 dark:text-gray-300">
-                                    {{ activity.timestamp|date:"d/m/Y H:i" }} - {{ activity.description }}
+                                    {{ activity.timestamp|date:"d/m/Y H:i" }} - {{ activity.user.username }} - {{ activity.description }}
                                 </li>
                             {% empty %}
                                 <li class="text-sm text-gray-500 dark:text-gray-400 italic">Belum ada aktivitas</li>
