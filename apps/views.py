@@ -315,6 +315,8 @@ def table_detail_view(request, table_id):
                     'related_table': related_table_name,
                     'data': related_data
                 })
+                
+    recent_activities = ActivityLog.objects.filter(table=table).order_by('-timestamp')[:5]
 
     context = {
         'table': table,
@@ -325,6 +327,7 @@ def table_detail_view(request, table_id):
         'user_tables': user_tables,
         'api_url': api_url,
         'relation_data': relation_data,
+        'recent_activities': recent_activities,
     }
     return render(request, 'table_detail.html', context)
 
