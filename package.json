@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "flowbite": "^2.5.1",
-    "mermaid": "^10.9.1"
+    "mermaid": "^10.9.1",
+    "simple-datatables": "^9.1.0"
   }
 }
